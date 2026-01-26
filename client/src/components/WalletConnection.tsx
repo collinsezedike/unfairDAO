@@ -1,42 +1,29 @@
 import React, { useState } from "react";
 import { Button } from "@radix-ui/themes";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 interface WalletConnectionProps {
 	onComplete: (address: string, username: string, xHandle: string) => void;
 }
 
 const WalletConnection: React.FC<WalletConnectionProps> = ({ onComplete }) => {
-	// State Management
-	const [isConnecting, setIsConnecting] = useState(false);
-	const [walletAddress, setWalletAddress] = useState<string | null>(null);
+	const { setVisible } = useWalletModal();
+	const { wallet } = useWallet();
 
-	// Form State
 	const [username, setUsername] = useState("");
 	const [xHandle, setXHandle] = useState("");
 	const [useAsX, setUseAsX] = useState(true);
 
-	// Phase 1: Connect Wallet
-	const handleConnectWallet = async () => {
-		setIsConnecting(true);
-		// Mock wallet connection delay
-		setTimeout(() => {
-			const mockAddress = "0x742d35Cc6634C0532925a3b8D4C0532925a3b8D4";
-			setWalletAddress(mockAddress);
-			setIsConnecting(false);
-		}, 1000);
-	};
-
-	// Phase 2: Submit Profile
 	const handleFinalize = (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!walletAddress) return;
+		if (!wallet?.adapter.publicKey) return;
 
-		const profile = {
-			username: username.trim(),
-			xHandle: useAsX ? `@${username.trim()}` : xHandle.trim(),
-		};
-
-		onComplete(walletAddress, username, xHandle);
+		onComplete(
+			wallet.adapter.publicKey.toBase58(),
+			username,
+			useAsX ? username.trim() : xHandle.trim(),
+		);
 	};
 
 	return (
@@ -46,17 +33,16 @@ const WalletConnection: React.FC<WalletConnectionProps> = ({ onComplete }) => {
 					UnfairDAO
 				</h1>
 
-				{!walletAddress ? (
+				{!wallet?.adapter.publicKey ? (
 					<div className="space-y-6">
 						<p className="font-serif text-white">
 							Welcome. Connect your wallet to get started.
 						</p>
 						<Button
-							onClick={handleConnectWallet}
-							disabled={isConnecting}
+							onClick={() => setVisible(true)}
 							className="cursor-pointer w-full bg-white text-black font-serif px-4 py-5 rounded-none border border-white hover:bg-gray-200 transition-colors"
 						>
-							{isConnecting ? "Connecting..." : "Connect Wallet"}
+							Connect Wallet
 						</Button>
 					</div>
 				) : (
@@ -67,8 +53,11 @@ const WalletConnection: React.FC<WalletConnectionProps> = ({ onComplete }) => {
 						<p className="font-serif text-gray-400 text-sm mb-4">
 							Connected:{" "}
 							<span className="font-mono text-white">
-								{walletAddress.slice(0, 6)}...
-								{walletAddress.slice(-4)}
+								{wallet.adapter.publicKey
+									.toBase58()
+									.slice(0, 6)}
+								...
+								{wallet.adapter.publicKey.toBase58().slice(-4)}
 							</span>
 						</p>
 
