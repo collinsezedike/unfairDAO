@@ -12,7 +12,7 @@ pub struct RegisterMember<'info> {
         payer = signer,
         seeds = [b"member", signer.key().as_ref()],
         bump,
-        space = Member::INIT_SPACE
+        space = Member::INIT_SPACE + 8
     )]
     pub new_member: Account<'info, Member>,
 

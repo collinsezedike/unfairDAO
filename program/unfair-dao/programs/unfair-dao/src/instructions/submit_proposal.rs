@@ -19,7 +19,7 @@ pub struct SubmitProposal<'info> {
         payer = signer,
         seeds = [b"proposal", title.as_bytes().as_ref(), member.key().as_ref()],
         bump,
-        space = Proposal::INIT_SPACE
+        space = Proposal::INIT_SPACE + 8
     )]
     pub new_proposal: Account<'info, Proposal>,
 
