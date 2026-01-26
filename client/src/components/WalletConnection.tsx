@@ -1,29 +1,69 @@
 import React, { useState } from "react";
 import { Button } from "@radix-ui/themes";
+import { toast } from "react-toastify";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useWallet, useConnection } from "@solana/wallet-adapter-react";
+import { fetchFairScore } from "../lib/fairscale/utils";
+import { registerMember } from "../lib/program/instructions";
 
 interface WalletConnectionProps {
 	onComplete: (address: string, username: string, xHandle: string) => void;
 }
 
 const WalletConnection: React.FC<WalletConnectionProps> = ({ onComplete }) => {
+	const { connection } = useConnection();
 	const { setVisible } = useWalletModal();
-	const { wallet } = useWallet();
+	const { wallet, signTransaction } = useWallet();
 
 	const [username, setUsername] = useState("");
 	const [xHandle, setXHandle] = useState("");
 	const [useAsX, setUseAsX] = useState(true);
 
-	const handleFinalize = (e: React.FormEvent) => {
+	const handleFinalize = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!wallet?.adapter.publicKey) return;
+		if (!wallet?.adapter.publicKey || !signTransaction) {
+			return toast.error("Wallet does not signing");
+		}
 
-		onComplete(
-			wallet.adapter.publicKey.toBase58(),
-			username,
-			useAsX ? username.trim() : xHandle.trim(),
-		);
+		try {
+			const fairScoreResult = await fetchFairScore(
+				wallet.adapter.publicKey.toBase58(),
+				username,
+			);
+
+			if (!fairScoreResult) {
+				return toast.error("Could not retrieve fair score");
+			}
+
+			const tx = await registerMember(
+				fairScoreResult.fairscore,
+				fairScoreResult.social_score,
+				fairScoreResult.fairscore_base,
+				fairScoreResult.tier,
+				username,
+				wallet.adapter.publicKey,
+			);
+
+			const signedTx = await signTransaction(tx);
+			const signature = await connection.sendRawTransaction(
+				signedTx.serialize(),
+			);
+			const latestBlockhash = await connection.getLatestBlockhash();
+			await connection.confirmTransaction({
+				blockhash: latestBlockhash.blockhash,
+				lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+				signature: signature,
+			});
+
+			onComplete(
+				wallet.adapter.publicKey.toBase58(),
+				username,
+				useAsX ? username.trim() : xHandle.trim(),
+			);
+		} catch (error) {
+			console.error("Failed to register member:", error);
+			toast.error("Failed to register member");
+		}
 	};
 
 	return (
