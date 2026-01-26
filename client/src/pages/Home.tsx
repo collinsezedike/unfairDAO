@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "react-toastify";
 import WalletConnection from "../components/WalletConnection";
 import Sidebar from "../components/Sidebar";
 import ProposalsView from "../components/ProposalsView";
 import ProfileView from "../components/ProfileView";
 import LeaderboardView from "../components/LeaderboardView";
+import { fetchFairScore } from "../lib/fairscale/utils";
 
 export default function Home() {
 	const [isConnected, setIsConnected] = useState(false);
@@ -13,23 +15,24 @@ export default function Home() {
 	const [activeView, setActiveView] = useState("proposals");
 	const [isFetchingFairscore, setIsFetchingFairscore] = useState(false);
 
-	const fetchFairscore = useCallback(async () => {
-		// Mock API call to fetch user's Fairscore
+	const loadFairscore = useCallback(async () => {
+		if (!walletAddress || !username) return;
+
 		setIsFetchingFairscore(true);
-		return new Promise<void>((resolve) => {
-			setTimeout(() => {
-				setUserFairscore(50);
-				setIsFetchingFairscore(false);
-				resolve();
-			}, 1000);
-		});
-	}, []);
+
+		const result = await fetchFairScore(walletAddress, username);
+		if (result && result.fairscore !== undefined) {
+			setUserFairscore(result.fairscore);
+		} else toast.error("Could not retrieve score");
+
+		setIsFetchingFairscore(false);
+	}, [walletAddress]);
 
 	useEffect(() => {
 		if (isConnected) {
-			fetchFairscore();
+			loadFairscore();
 		}
-	}, [isConnected, fetchFairscore]);
+	}, [isConnected, loadFairscore]);
 
 	const handleWalletConnect = (
 		address: string,
@@ -61,7 +64,7 @@ export default function Home() {
 						userFairscore={userFairscore}
 						username={username}
 						isRefetching={isFetchingFairscore}
-						onRefetchFairscore={fetchFairscore}
+						onRefetchFairscore={loadFairscore}
 					/>
 				);
 			case "leaderboard":
