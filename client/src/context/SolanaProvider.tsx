@@ -15,11 +15,11 @@ interface SolanaProviderProps {
 }
 
 const SolanaProvider: FC<SolanaProviderProps> = ({ children }) => {
-	const network = WalletAdapterNetwork.Devnet;
-	const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+	// const network = WalletAdapterNetwork.Devnet;
+	// const endpoint = useMemo(() => clusterApiUrl(network), [network]);
 	return (
-		// <ConnectionProvider endpoint={"http://127.0.0.1:8899"}>
-		<ConnectionProvider endpoint={endpoint}>
+		// <ConnectionProvider endpoint={endpoint}>
+		<ConnectionProvider endpoint={"http://127.0.0.1:8899"}>
 			<WalletProvider wallets={[]} autoConnect>
 				<WalletModalProvider>{children}</WalletModalProvider>
 			</WalletProvider>

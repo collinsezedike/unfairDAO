@@ -135,7 +135,7 @@ const LeaderboardView: React.FC = () => {
 						<div
 							key={user.address}
 							onClick={() => setSelectedUser(user)}
-							className={`border border-white p-6 flex items-center justify-between transition-colors ${
+							className={`cursor-pointer border border-white p-6 flex items-center justify-between transition-colors ${
 								user.rank === 1
 									? "bg-white text-black"
 									: "bg-black text-white"

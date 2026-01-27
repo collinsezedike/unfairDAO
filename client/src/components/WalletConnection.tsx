@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Button } from "@radix-ui/themes";
 import { toast } from "react-toastify";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { fetchFairScore } from "../lib/fairscale/utils";
 import { registerMember } from "../lib/program/instructions";
+import { fetchMemberAccount } from "../lib/program/utils";
 
 interface WalletConnectionProps {
 	onComplete: (address: string, username: string, xHandle: string) => void;
@@ -13,27 +14,83 @@ interface WalletConnectionProps {
 const WalletConnection: React.FC<WalletConnectionProps> = ({ onComplete }) => {
 	const { connection } = useConnection();
 	const { setVisible } = useWalletModal();
-	const { wallet, signTransaction } = useWallet();
+	const { wallet, signTransaction, connected } = useWallet();
 
 	const [username, setUsername] = useState("");
 	const [xHandle, setXHandle] = useState("");
 	const [useAsX, setUseAsX] = useState(true);
 
+	const fetchMemberAccountDataIfAny = useCallback(async () => {
+		if (!wallet?.adapter.publicKey) return;
+
+		const memberAccount = await fetchMemberAccount(
+			wallet.adapter.publicKey.toBase58(),
+		);
+		if (memberAccount) {
+			return onComplete(
+				wallet.adapter.publicKey.toBase58(),
+				memberAccount.username,
+				memberAccount.username,
+			);
+		}
+	}, [wallet?.adapter.publicKey]);
+
+	useEffect(() => {
+		if (connected) fetchMemberAccountDataIfAny();
+	}, [connected, fetchMemberAccountDataIfAny]);
+
 	const handleFinalize = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!wallet?.adapter.publicKey || !signTransaction) {
-			return toast.error("Wallet does not signing");
+			return toast.error("Wallet does not support signing");
 		}
 
 		try {
-			const fairScoreResult = await fetchFairScore(
-				wallet.adapter.publicKey.toBase58(),
-				username,
-			);
+			// const fairScoreResult = await fetchFairScore(
+			// 	wallet.adapter.publicKey.toBase58(),
+			// 	username,
+			// );
 
-			if (!fairScoreResult) {
-				return toast.error("Could not retrieve fair score");
-			}
+			// if (!fairScoreResult) {
+			// 	return toast.error("Could not retrieve fair score");
+			// }
+
+			const fairScoreResult = {
+				wallet: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+				fairscore_base: 58.1,
+				social_score: 36,
+				fairscore: 65.3,
+				badges: [
+					{
+						id: "diamond_hands",
+						label: "Diamond Hands",
+						description: "Long-term holder with conviction",
+						tier: "platinum",
+					},
+				],
+				actions: [{}],
+				tier: "gold",
+				timestamp: "2026-01-21T13:13:53.608725Z",
+				features: {
+					lst_percentile_score: 0,
+					major_percentile_score: 0,
+					native_sol_percentile: 0,
+					stable_percentile_score: 0,
+					tx_count: 0,
+					active_days: 0,
+					median_gap_hours: 0,
+					tempo_cv: 0,
+					burst_ratio: 0,
+					net_sol_flow_30d: 0,
+					median_hold_days: 0,
+					no_instant_dumps: 0,
+					conviction_ratio: 0,
+					platform_diversity: 0,
+					wallet_age_days: 0,
+				},
+			};
+
+			console.log(fairScoreResult);
 
 			const tx = await registerMember(
 				fairScoreResult.fairscore,
@@ -55,7 +112,7 @@ const WalletConnection: React.FC<WalletConnectionProps> = ({ onComplete }) => {
 				signature: signature,
 			});
 
-			onComplete(
+			return onComplete(
 				wallet.adapter.publicKey.toBase58(),
 				username,
 				useAsX ? username.trim() : xHandle.trim(),

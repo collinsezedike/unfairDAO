@@ -1,56 +1,18 @@
 import * as anchor from "@coral-xyz/anchor";
 import {
-	clusterApiUrl,
-	Connection,
 	PublicKey,
 	TransactionInstruction,
 	TransactionMessage,
 	VersionedTransaction,
 } from "@solana/web3.js";
-import IDL from "./idl.json";
-import type { UnfairDao } from "./types";
 
-export const connection = new Connection(clusterApiUrl("devnet"), {
-	commitment: "confirmed",
-});
-
-export const program = new anchor.Program<UnfairDao>(IDL, { connection });
-
-export const getMemberPDA = (user: PublicKey) => {
-	const [pda] = PublicKey.findProgramAddressSync(
-		[Buffer.from("member"), user.toBuffer()],
-		program.programId,
-	);
-	return pda;
-};
-
-export const getProposalPDA = (title: string, memberPDA: PublicKey) => {
-	const [pda] = PublicKey.findProgramAddressSync(
-		[Buffer.from("proposal"), Buffer.from(title), memberPDA.toBuffer()],
-		program.programId,
-	);
-	return pda;
-};
-
-export const getVotePDA = (proposalPDA: PublicKey, memberPDA: PublicKey) => {
-	const [pda] = PublicKey.findProgramAddressSync(
-		[Buffer.from("vote"), proposalPDA.toBuffer(), memberPDA.toBuffer()],
-		program.programId,
-	);
-	return pda;
-};
-
-export const fetchMemberAccount = async (memberPDA: PublicKey) => {
-	return await program.account.member.fetch(memberPDA);
-};
-
-export const fetchProposalAccount = async (proposalPDA: PublicKey) => {
-	return await program.account.proposal.fetch(proposalPDA);
-};
-
-export const fetchVoteAccount = async (votePDA: PublicKey) => {
-	return await program.account.vote.fetch(votePDA);
-};
+import {
+	connection,
+	getMemberPDA,
+	getProposalPDA,
+	getVotePDA,
+	program,
+} from "./utils";
 
 const SYSTEM_PROGRAM_ID = anchor.web3.SystemProgram.programId;
 

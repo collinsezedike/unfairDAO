@@ -5,36 +5,28 @@ import Sidebar from "../components/Sidebar";
 import ProposalsView from "../components/ProposalsView";
 import ProfileView from "../components/ProfileView";
 import LeaderboardView from "../components/LeaderboardView";
-import { fetchFairScore } from "../lib/fairscale/utils";
+import { fetchMemberAccount } from "../lib/program/utils";
 
 export default function Home() {
 	const [isConnected, setIsConnected] = useState(false);
 	const [walletAddress, setWalletAddress] = useState("");
 	const [username, setUsername] = useState("");
-	const [userFairscore, setUserFairscore] = useState(0);
 	const [activeView, setActiveView] = useState("proposals");
-	const [isFetchingFairscore, setIsFetchingFairscore] = useState(false);
+	const [memberAccountData, setMemberAccountData] =
+		useState<Awaited<ReturnType<typeof fetchMemberAccount>>>(null);
 
-	const loadFairscore = useCallback(async () => {
+	const loadMemberAccountData = useCallback(async () => {
 		if (!walletAddress || !username) return;
-
-		setIsFetchingFairscore(true);
-
-		const result = await fetchFairScore(walletAddress, username);
-		if (result && result.fairscore !== undefined) {
-			setUserFairscore(result.fairscore);
-		} else toast.error("Could not retrieve score");
-
-		setIsFetchingFairscore(false);
+		const memberAccount = await fetchMemberAccount(walletAddress);
+		if (!memberAccount) return toast.error("Could not retrieve score");
+		setMemberAccountData(memberAccount);
 	}, [walletAddress]);
 
 	useEffect(() => {
-		if (isConnected) {
-			loadFairscore();
-		}
-	}, [isConnected, loadFairscore]);
+		if (isConnected) loadMemberAccountData();
+	}, [isConnected, loadMemberAccountData]);
 
-	const handleWalletConnect = (
+	const handlePostWalletConnect = async (
 		address: string,
 		username: string,
 		xHandle: string,
@@ -45,7 +37,7 @@ export default function Home() {
 	};
 
 	if (!isConnected) {
-		return <WalletConnection onComplete={handleWalletConnect} />;
+		return <WalletConnection onComplete={handlePostWalletConnect} />;
 	}
 
 	const renderMainContent = () => {
@@ -53,7 +45,7 @@ export default function Home() {
 			case "proposals":
 				return (
 					<ProposalsView
-						userFairscore={userFairscore}
+						userFairscore={memberAccountData?.fairScore || 0}
 						walletAddress={walletAddress}
 					/>
 				);
@@ -61,10 +53,8 @@ export default function Home() {
 				return (
 					<ProfileView
 						walletAddress={walletAddress}
-						userFairscore={userFairscore}
+						userFairscore={memberAccountData?.fairScore || 0}
 						username={username}
-						isRefetching={isFetchingFairscore}
-						onRefetchFairscore={loadFairscore}
 					/>
 				);
 			case "leaderboard":
@@ -72,7 +62,7 @@ export default function Home() {
 			default:
 				return (
 					<ProposalsView
-						userFairscore={userFairscore}
+						userFairscore={memberAccountData?.fairScore || 0}
 						walletAddress={walletAddress}
 					/>
 				);
@@ -111,7 +101,7 @@ export default function Home() {
 								Fairscore
 							</p>
 							<p className="font-mono text-xl font-bold text-white">
-								{userFairscore}
+								{memberAccountData?.fairScore}
 							</p>
 						</div>
 					</div>
