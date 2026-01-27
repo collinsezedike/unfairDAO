@@ -31,6 +31,8 @@ pub struct Member {
     pub tier: TierType,
     #[max_len(16)]
     pub username: String,
+    #[max_len(16)]
+    pub x_username: String,
     pub wallet: Pubkey,
 }
 

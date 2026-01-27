@@ -51,7 +51,7 @@ impl<'info> VoteProposal<'info> {
                 self.proposal.votes_for = self
                     .proposal
                     .votes_for
-                    .checked_add(1)
+                    .checked_add(self.member.fair_score as u32)
                     .ok_or(UnfairDaoError::CountOutOfRange)?
             }
 
@@ -59,7 +59,7 @@ impl<'info> VoteProposal<'info> {
                 self.proposal.votes_against = self
                     .proposal
                     .votes_against
-                    .checked_add(1)
+                    .checked_add(self.member.fair_score as u32)
                     .ok_or(UnfairDaoError::CountOutOfRange)?
             }
         };

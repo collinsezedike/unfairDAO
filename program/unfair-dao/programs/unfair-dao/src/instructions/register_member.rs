@@ -27,6 +27,7 @@ impl<'info> RegisterMember<'info> {
         wallet_score: u16,
         tier: TierType,
         username: String,
+        x_username: String,
         bumps: &RegisterMemberBumps,
     ) -> Result<()> {
         self.new_member.set_inner(Member {
@@ -36,6 +37,7 @@ impl<'info> RegisterMember<'info> {
             wallet_score,
             tier,
             username,
+            x_username,
             wallet: self.signer.key(),
         });
         Ok(())

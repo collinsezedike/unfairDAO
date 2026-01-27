@@ -68,6 +68,10 @@ export type UnfairDao = {
 					name: "username";
 					type: "string";
 				},
+				{
+					name: "xUsername";
+					type: "string";
+				},
 			];
 		},
 		{
@@ -335,6 +339,10 @@ export type UnfairDao = {
 					},
 					{
 						name: "username";
+						type: "string";
+					},
+					{
+						name: "xUsername";
 						type: "string";
 					},
 					{

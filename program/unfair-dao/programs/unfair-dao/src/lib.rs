@@ -22,6 +22,7 @@ pub mod unfair_dao {
         wallet_score: u16,
         tier: TierType,
         username: String,
+        x_username: String,
     ) -> Result<()> {
         ctx.accounts.register_member(
             fair_score,
@@ -29,6 +30,7 @@ pub mod unfair_dao {
             wallet_score,
             tier,
             username,
+            x_username,
             &ctx.bumps,
         )
     }

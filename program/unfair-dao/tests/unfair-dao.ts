@@ -26,6 +26,7 @@ describe("unfair_dao - full lifecycle", () => {
 	);
 
 	const username = "SolanaSurfer";
+	const xUsername = "SolanaSurfer123";
 	const fairScoreData = {
 		fairScore: 50,
 		walletScore: 30,
@@ -81,6 +82,7 @@ describe("unfair_dao - full lifecycle", () => {
 				fairScoreData.walletScore,
 				fairScoreData.tier,
 				username,
+				xUsername,
 			)
 			.accountsStrict({
 				signer: user.publicKey,
@@ -145,7 +147,7 @@ describe("unfair_dao - full lifecycle", () => {
 
 	it("Casts a vote on the proposal", async () => {
 		await program.methods
-			.voteProposal({ approve: {} }) // VoteType Enum
+			.voteProposal({ approve: {} })
 			.accountsStrict({
 				signer: user.publicKey,
 				member: userMemberPDA,
@@ -157,7 +159,7 @@ describe("unfair_dao - full lifecycle", () => {
 			.rpc();
 
 		const proposal = await program.account.proposal.fetch(proposalPDA);
-		expect(proposal.votesFor).to.equal(1);
+		expect(proposal.votesFor).to.equal(85);
 
 		const vote = await program.account.vote.fetch(votePDA);
 		expect(vote.member.toString()).to.equal(userMemberPDA.toString());
