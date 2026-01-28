@@ -48,8 +48,6 @@ export default function Home() {
 		setUsername("");
 		setXUsername("");
 		setMemberAccountData(null);
-		// Optional: add a small toast to confirm
-		toast.info("Wallet disconnected");
 	};
 
 	if (!isConnected) {
