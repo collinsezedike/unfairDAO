@@ -48,8 +48,16 @@ export const fetchMemberAccount = async (walletAddress: string) => {
 	}
 };
 
-export const fetchProposalAccount = async (proposalAddress: string) => {
-	return await program.account.proposal.fetch(proposalAddress);
+export const fetchAllMemberAccounts = async () => {
+	const members = await program.account.member.all();
+	return members.map((m) => {
+		return {
+			publicKey: m.publicKey.toBase58(),
+			...m.account,
+			wallet: m.account.wallet.toBase58(),
+			tier: Object.keys(m.account.tier)[0],
+		};
+	});
 };
 
 export const fetchAllProposalAccounts = async () => {
