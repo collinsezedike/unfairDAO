@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "react-toastify";
+import { useWallet } from "@solana/wallet-adapter-react";
 import WalletConnection from "../components/WalletConnection";
 import Sidebar from "../components/Sidebar";
 import ProposalsView from "../components/ProposalsView";
@@ -8,6 +9,7 @@ import LeaderboardView from "../components/LeaderboardView";
 import { fetchMemberAccount } from "../lib/program/utils";
 
 export default function Home() {
+	const { disconnect } = useWallet();
 	const [isConnected, setIsConnected] = useState(false);
 	const [walletAddress, setWalletAddress] = useState("");
 	const [username, setUsername] = useState("");
@@ -36,6 +38,18 @@ export default function Home() {
 		setUsername(username);
 		setXUsername(xUsername);
 		setIsConnected(true);
+	};
+
+	const handleDisconnect = () => {
+		disconnect();
+		// Reset all states
+		setIsConnected(false);
+		setWalletAddress("");
+		setUsername("");
+		setXUsername("");
+		setMemberAccountData(null);
+		// Optional: add a small toast to confirm
+		toast.info("Wallet disconnected");
 	};
 
 	if (!isConnected) {
@@ -114,6 +128,13 @@ export default function Home() {
 								{memberAccountData?.fairScore}
 							</p>
 						</div>
+
+						<button
+							onClick={handleDisconnect}
+							className="w-full mt-8 border border-white bg-transparent text-white font-mono py-3 transition-all duration-200 hover:bg-white hover:text-black active:scale-[0.98]"
+						>
+							Disconnect
+						</button>
 					</div>
 				</div>
 			</aside>
