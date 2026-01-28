@@ -71,8 +71,8 @@ const NewProposalForm: React.FC<NewProposalFormProps> = ({ onSubmit }) => {
 			});
 			setIsOpen(false);
 		} catch (error) {
-			console.error("Failed to register member:", error);
-			toast.error("Failed to register member");
+			console.error("Failed to submit proposal:", error);
+			toast.error("Failed to submit proposal");
 		} finally {
 			setIsSubmitting(false);
 		}

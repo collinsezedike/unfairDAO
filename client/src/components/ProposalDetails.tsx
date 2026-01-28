@@ -9,9 +9,11 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { fetchAllProposalAccountsByUser } from "../lib/program/utils";
 import { voteProposal } from "../lib/program/instructions";
-import { fetchAllVoteAccountsByUser } from "../lib/program/utils";
+import {
+	fetchAllProposalAccounts,
+	fetchAllVoteAccountsByUser,
+} from "../lib/program/utils";
 
 const getTimeRemaining = (endTimeSeconds: number) => {
 	const totalMs = endTimeSeconds * 1000 - Date.now();
@@ -32,7 +34,7 @@ interface ProposalDetailsProps {
 	onBack: () => void;
 	userFairscore: number;
 	walletAddress: string;
-	proposal: Awaited<ReturnType<typeof fetchAllProposalAccountsByUser>>[0];
+	proposal: Awaited<ReturnType<typeof fetchAllProposalAccounts>>[0];
 }
 
 const ProposalDetails: React.FC<ProposalDetailsProps> = ({

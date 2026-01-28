@@ -31,7 +31,7 @@ const ProposalCard: React.FC<ProposalCardProps> = ({
 					{proposal.title}
 				</h3>
 				<p className="font-serif text-white mb-4 leading-relaxed">
-					{proposal.description}
+					{proposal.description.slice(0, 225)}...
 				</p>
 
 				<div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
