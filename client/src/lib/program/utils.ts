@@ -3,13 +3,13 @@ import { clusterApiUrl, Connection, PublicKey } from "@solana/web3.js";
 import IDL from "./idl.json";
 import type { UnfairDao } from "./types";
 
-// export const connection = new Connection(clusterApiUrl("devnet"), {
-// 	commitment: "confirmed",
-// });
-
-export const connection = new Connection("http://127.0.0.1:8899", {
+export const connection = new Connection(clusterApiUrl("devnet"), {
 	commitment: "confirmed",
 });
+
+// export const connection = new Connection("http://127.0.0.1:8899", {
+// 	commitment: "confirmed",
+// });
 
 export const program = new anchor.Program<UnfairDao>(IDL, { connection });
 
