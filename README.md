@@ -35,7 +35,7 @@ Fairscale API, like any high-fidelity data provider, enforces rate limits to pre
 
 When a user first registers or "refreshes" their profile, the frontend performs a single, authenticated handshake with the Fairscale API. The resulting data—the fairscore and the tier—is then saved in the program account state.
 
-#### The MemberAccount Structure
+#### The Member account Structure
 
 The score is stored in a PDA, making the data "warm" and globally available to the blockchain without further API calls:
 
@@ -52,7 +52,7 @@ pub struct Member {
 }
 ```
 
-#### 4. Implementation Logic
+#### Implementation Logic
 
 * **On-Chain Dominance:** Once a user is logged in, every component in the application (Proposals, Leaderboard, Profile) reads directly from the `Member` account state. This prevents "API Waterfall" effects where multiple components trigger redundant Fairscale requests upon rendering.
 * **Manual Sync Strategy:** The system employs a "Manual Refresh" pattern. The Fairscale API is only engaged when the user explicitly triggers the **Sync** button.
@@ -66,7 +66,7 @@ pub struct Member {
 
 ### 3. The Voting Lifecycle
 
-1. **Validation:** The system checks your `MemberAccount` to verify your current FS Tier.
+1. **Validation:** The system checks your `Member` account to verify your current FS Tier.
 2. **Commitment:** Votes are recorded on-chain. Once a ballot is cast, the weight is locked for the duration of that proposal to prevent "score-hopping."
 3. **Execution:** If a proposal meets its **Quorum** and passing requirements, the DAO Treasury or Program executes the instruction permissionlessly.
 
