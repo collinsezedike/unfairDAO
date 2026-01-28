@@ -1,20 +1,13 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import ProposalCard from "./ProposalCard";
 import NewProposalForm from "./NewProposalForm";
 import ProposalDetails from "./ProposalDetails";
+import { fetchAllProposalAccounts } from "../lib/program/utils";
+import { Ghost } from "lucide-react";
 
 interface ProposalsViewProps {
 	userFairscore: number;
 	walletAddress: string;
-}
-
-interface Proposal {
-	id: string;
-	title: string;
-	description: string;
-	author: string;
-	scoreThreshold: number;
-	scoreLimit: number;
 }
 
 const ProposalsView: React.FC<ProposalsViewProps> = ({
@@ -24,83 +17,71 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({
 	const [selectedProposalId, setSelectedProposalId] = useState<string | null>(
 		null,
 	);
-	const [proposals, setProposals] = useState<Proposal[]>([
-		{
-			id: "1",
-			title: "Implement Quadratic Voting",
-			description:
-				"Proposal to implement quadratic voting mechanism for more democratic decision making in the DAO.",
-			author: "0x742d35Cc...3b8D4",
-			scoreThreshold: 25,
-			scoreLimit: 100,
-		},
-		{
-			id: "2",
-			title: "Treasury Diversification",
-			description:
-				"Diversify DAO treasury across multiple assets to reduce risk and increase long-term sustainability.",
-			author: "0x8f3e2a1b...9c7d6",
-			scoreThreshold: 75,
-			scoreLimit: 150,
-		},
-		{
-			id: "3",
-			title: "Community Rewards Program",
-			description:
-				"Launch a comprehensive rewards program to incentivize active participation and contribution.",
-			author: "0x1a2b3c4d...5e6f7",
-			scoreThreshold: 40,
-			scoreLimit: 120,
-		},
-	]);
+	const [proposals, setProposals] = useState<
+		Awaited<ReturnType<typeof fetchAllProposalAccounts>>
+	>([]);
 
-	const handleNewProposal = (proposalData: {
-		title: string;
-		description: string;
-		scoreThreshold: number;
-		scoreLimit: number;
-	}) => {
-		const newProposal = {
-			id: Date.now().toString(),
-			...proposalData,
-			author: `${walletAddress.slice(0, 10)}...${walletAddress.slice(-4)}`,
-		};
-		setProposals([newProposal, ...proposals]);
-	};
+	const loadProposalAccountsData = useCallback(async () => {
+		if (!walletAddress) return;
+		const proposals = await fetchAllProposalAccounts();
+		setProposals(proposals);
+	}, [walletAddress]);
 
-	const activeProposal = proposals.find((p) => p.id === selectedProposalId);
+	useEffect(() => {
+		loadProposalAccountsData();
+	}, [loadProposalAccountsData]);
 
-	// If a proposal is clicked, show the details screen
+	const activeProposal = proposals.find(
+		(p) => p.publicKey === selectedProposalId,
+	);
+
 	if (activeProposal) {
 		return (
 			<ProposalDetails
 				userFairscore={userFairscore}
 				onBack={() => setSelectedProposalId(null)}
-				proposal={{
-					...activeProposal,
-					// Adding mock data that Details needs but Card doesn't
-					status: "Active",
-					endTime: "4d 12h",
-					votesFor: 1240,
-					votesAgainst: 450,
-					quorum: 2000,
-				}}
+				proposal={activeProposal}
+				walletAddress={walletAddress}
 			/>
 		);
 	}
 
 	return (
-		<div>
-			<NewProposalForm onSubmit={handleNewProposal} />
+		<div className="space-y-8">
+			<NewProposalForm onSubmit={loadProposalAccountsData} />
+
 			<div className="space-y-4">
-				{proposals.map((proposal) => (
-					<ProposalCard
-						key={proposal.id}
-						proposal={proposal}
-						userFairscore={userFairscore}
-						onClick={() => setSelectedProposalId(proposal.id)}
-					/>
-				))}
+				{proposals.length > 0 ? (
+					proposals.map((proposal) => (
+						<ProposalCard
+							key={proposal.publicKey}
+							proposal={proposal}
+							userFairscore={userFairscore}
+							onClick={() =>
+								setSelectedProposalId(proposal.publicKey)
+							}
+						/>
+					))
+				) : (
+					<div className="border border-white bg-black p-16 text-center flex flex-col items-center justify-center space-y-4">
+						<div className="p-4 rounded-full">
+							<Ghost
+								size={60}
+								className="text-white"
+								strokeWidth={1.5}
+							/>
+						</div>
+						<div className="max-w-xs">
+							<h3 className="text-white text-xl mb-3">
+								The DAO is Silent
+							</h3>
+							<p className="text-zinc-500 mt-2">
+								No active proposals found. Use the form above to
+								submit a new proposal.
+							</p>
+						</div>
+					</div>
+				)}
 			</div>
 		</div>
 	);

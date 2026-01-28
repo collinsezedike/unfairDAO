@@ -1,10 +1,15 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { FileText, RefreshCw, User, Vote, Wallet } from "lucide-react";
-import ProposalDetails from "./ProposalDetails";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
-import { fetchMemberAccount } from "../lib/program/utils";
+import ProposalDetails from "./ProposalDetails";
+import { fetchFairScore } from "../lib/fairscale/utils";
 import { updateMember } from "../lib/program/instructions";
+import {
+	fetchAllProposalAccountsByUser,
+	fetchAllVoteAccountsByUser,
+	fetchMemberAccount,
+} from "../lib/program/utils";
 
 interface ProfileViewProps {
 	username: string;
@@ -29,91 +34,64 @@ const ProfileView: React.FC<ProfileViewProps> = ({
 	const [selectedProposalId, setSelectedProposalId] = useState<string | null>(
 		null,
 	);
+	const [proposalAccountsData, setProposalAccountsData] = useState<
+		Awaited<ReturnType<typeof fetchAllProposalAccountsByUser>>
+	>([]);
+	const [voteAccountsData, setVoteAccountsData] = useState<
+		Awaited<ReturnType<typeof fetchAllVoteAccountsByUser>>
+	>([]);
 
-	const mockProposals = [
-		{
-			id: "1",
-			title: "Implement Quadratic Voting",
-			description:
-				"Proposal to implement quadratic voting mechanism for more democratic decision making in the DAO.",
-			author: "0x742d35Cc...3b8D4",
-			status: "Active",
-			date: "2024-03-01",
-			scoreThreshold: 75,
-			scoreLimit: 150,
-			totalVotes: 42,
-		},
-		{
-			id: "2",
-			title: "Treasury Diversification",
-			description:
-				"Proposal to implement quadratic voting mechanism for more democratic decision making in the DAO.",
-			author: "0x742d35Cc...3b8D4",
-			status: "Passed",
-			date: "2024-02-15",
-			scoreThreshold: 20,
-			scoreLimit: 40,
-			totalVotes: 78,
-		},
-	];
+	const loadUserAccountsData = useCallback(async () => {
+		if (!walletAddress || !username) return;
+		const proposals = await fetchAllProposalAccountsByUser(walletAddress);
+		const votes = await fetchAllVoteAccountsByUser(walletAddress);
+		setProposalAccountsData(proposals);
+		setVoteAccountsData(votes);
+	}, [walletAddress]);
 
-	const mockVotes = [
-		{
-			id: "v1",
-			proposalID: "1",
-			title: "Expand Core Team",
-			action: "Support",
-			weight: 50,
-			timestamp: "2 hrs ago",
-		},
-		{
-			id: "v2",
-			proposalID: "2",
-			title: "Monthly Burn Rate",
-			action: "Oppose",
-			weight: 50,
-			timestamp: "1 day ago",
-		},
-		{
-			id: "v3",
-			proposalID: "3",
-			title: "New UI Paradigm",
-			action: "Support",
-			weight: 42,
-			timestamp: "3 days ago",
-		},
-	];
+	useEffect(() => {
+		loadUserAccountsData();
+	}, [loadUserAccountsData]);
 
-	const getProposalIDFromVote = (voteProposalID: string) => {
-		const proposal = mockProposals.find((p) => p.id === voteProposalID);
-		if (!proposal) return null;
-		return proposal.id;
-	};
-
-	const activeProposal = mockProposals.find(
-		(p) => p.id === selectedProposalId,
+	const activeProposal = proposalAccountsData.find(
+		(p) => p.publicKey === selectedProposalId,
 	);
-	// || mockVotes.find((p) => p.id === selectedProposalId);
+
+	const getProposalTitleFromVoteProposalAddress = (
+		voteProposalAddress: string,
+	) => {
+		const proposal = proposalAccountsData.find(
+			(p) => p.publicKey === voteProposalAddress,
+		);
+		if (!proposal) return null;
+		return proposal.title;
+	};
 
 	if (activeProposal) {
 		return (
 			<ProposalDetails
+				proposal={activeProposal}
 				userFairscore={userFairscore}
+				walletAddress={walletAddress}
 				onBack={() => setSelectedProposalId(null)}
-				proposal={{
-					...activeProposal,
-					// Adding mock data that Details needs but Card doesn't
-					status: "Active",
-					endTime: "4d 12h",
-					votesFor: 1240,
-					votesAgainst: 450,
-					quorum: 2000,
-				}}
 			/>
 		);
 	}
 
 	const renderProposalsTable = () => {
+		if (proposalAccountsData.length === 0) {
+			return (
+				<div className="p-20 text-center flex flex-col items-center justify-center space-y-4">
+					<FileText size={48} className="text-zinc-700" />
+					<div>
+						<p className="text-white text-xl mb-2">
+							No Proposals Found
+						</p>
+					</div>
+				</div>
+			);
+		}
+
 		return (
 			<section className="border border-white bg-black">
 				<div className="overflow-x-auto">
@@ -132,22 +110,25 @@ const ProfileView: React.FC<ProfileViewProps> = ({
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-zinc-800 text-white">
-							{mockProposals.map((proposal) => (
+							{proposalAccountsData.map((proposal) => (
 								<tr
-									key={proposal.id}
+									key={proposal.publicKey}
 									className="cursor-pointer hover:bg-zinc-950 transition-colors group"
 									onClick={() =>
-										setSelectedProposalId(proposal.id)
+										setSelectedProposalId(
+											proposal.publicKey,
+										)
 									}
 								>
 									<td className="p-4 text-lg">
 										{proposal.title}
 									</td>
-									<td className="p-4 text-center">
+									<td className="p-4 text-center capitalize">
 										{proposal.status}
 									</td>
 									<td className="p-4 text-right">
-										{proposal.totalVotes}
+										{proposal.votesFor +
+											proposal.votesAgainst}
 									</td>
 								</tr>
 							))}
@@ -159,6 +140,19 @@ const ProfileView: React.FC<ProfileViewProps> = ({
 	};
 
 	const renderVotesTable = () => {
+		if (voteAccountsData.length === 0) {
+			return (
+				<div className="p-20 text-center flex flex-col items-center justify-center space-y-4">
+					<Vote size={48} className="text-zinc-700" />
+					<div>
+						<p className="text-white text-xl mb-2">
+							No Voting History
+						</p>
+					</div>
+				</div>
+			);
+		}
+
 		return (
 			<section className="border border-white bg-black">
 				<div className="overflow-x-auto">
@@ -177,24 +171,21 @@ const ProfileView: React.FC<ProfileViewProps> = ({
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-zinc-800 text-white">
-							{mockVotes.map((vote) => (
+							{voteAccountsData.map((vote) => (
 								<tr
-									key={vote.id}
+									key={vote.publicKey}
 									className="cursor-pointer hover:bg-zinc-950 transition-colors group"
 									onClick={() =>
-										// For now, let's find by Title
-										setSelectedProposalId(
-											getProposalIDFromVote(
-												vote.proposalID,
-											),
-										)
+										setSelectedProposalId(vote.proposal)
 									}
 								>
 									<td className="p-4 text-lg">
-										{vote.title}
+										{getProposalTitleFromVoteProposalAddress(
+											vote.proposal,
+										)}
 									</td>
-									<td className="p-4 text-center">
-										{vote.action}
+									<td className="p-4 text-center capitalize">
+										{vote.vote}
 									</td>
 									<td className="p-4 text-right">
 										{vote.weight}
@@ -216,52 +207,14 @@ const ProfileView: React.FC<ProfileViewProps> = ({
 			}
 
 			// Fetch fairscale data
+			const fairScoreResult = await fetchFairScore(
+				wallet.adapter.publicKey.toBase58(),
+				username,
+			);
 
-			// const fairScoreResult = await fetchFairScore(
-			// 	wallet.adapter.publicKey.toBase58(),
-			// 	username,
-			// );
-
-			// if (!fairScoreResult) {
-			// 	return toast.error("Could not retrieve fair score");
-			// }
-
-			const fairScoreResult = {
-				wallet: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
-				fairscore_base: 58.1,
-				social_score: 36,
-				fairscore: 65.3,
-				badges: [
-					{
-						id: "diamond_hands",
-						label: "Diamond Hands",
-						description: "Long-term holder with conviction",
-						tier: "platinum",
-					},
-				],
-				actions: [{}],
-				tier: "gold",
-				timestamp: "2026-01-21T13:13:53.608725Z",
-				features: {
-					lst_percentile_score: 0,
-					major_percentile_score: 0,
-					native_sol_percentile: 0,
-					stable_percentile_score: 0,
-					tx_count: 0,
-					active_days: 0,
-					median_gap_hours: 0,
-					tempo_cv: 0,
-					burst_ratio: 0,
-					net_sol_flow_30d: 0,
-					median_hold_days: 0,
-					no_instant_dumps: 0,
-					conviction_ratio: 0,
-					platform_diversity: 0,
-					wallet_age_days: 0,
-				},
-			};
-
-			console.log(fairScoreResult);
+			if (!fairScoreResult) {
+				return toast.error("Could not retrieve fair score");
+			}
 
 			// Fetch member account data
 			const memberAccountData = await fetchMemberAccount(

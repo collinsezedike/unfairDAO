@@ -35,12 +35,20 @@ export const registerMember = async (
 	walletScore: number,
 	tier: string,
 	username: string,
+	xUsername: string,
 	user: PublicKey,
 ) => {
 	const userMemberPDA = getMemberPDA(user);
 	const tierEnum = { [tier.toLowerCase()]: {} };
 	const ix = await program.methods
-		.registerMember(fairScore, socialScore, walletScore, tierEnum, username)
+		.registerMember(
+			fairScore,
+			socialScore,
+			walletScore,
+			tierEnum,
+			username,
+			xUsername,
+		)
 		.accountsStrict({
 			signer: user,
 			newMember: userMemberPDA,
@@ -105,12 +113,11 @@ export const submitProposal = async (
 
 export const voteProposal = async (
 	voteType: string,
-	proposalTitle: string,
-	proposalAuthorMemberPDA: PublicKey,
+	proposal: string,
 	user: PublicKey,
 ) => {
 	const userMemberPDA = getMemberPDA(user);
-	const proposalPDA = getProposalPDA(proposalTitle, proposalAuthorMemberPDA);
+	const proposalPDA = new PublicKey(proposal);
 	const votePDA = getVotePDA(proposalPDA, userMemberPDA);
 
 	const voteEnum = { [voteType.toLowerCase()]: {} };

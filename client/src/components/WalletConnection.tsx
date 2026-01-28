@@ -8,7 +8,7 @@ import { registerMember } from "../lib/program/instructions";
 import { fetchMemberAccount } from "../lib/program/utils";
 
 interface WalletConnectionProps {
-	onComplete: (address: string, username: string, xHandle: string) => void;
+	onComplete: (address: string, username: string, xUsername: string) => void;
 }
 
 const WalletConnection: React.FC<WalletConnectionProps> = ({ onComplete }) => {
@@ -17,8 +17,9 @@ const WalletConnection: React.FC<WalletConnectionProps> = ({ onComplete }) => {
 	const { wallet, signTransaction, connected } = useWallet();
 
 	const [username, setUsername] = useState("");
-	const [xHandle, setXHandle] = useState("");
+	const [xUsername, setXUsername] = useState("");
 	const [useAsX, setUseAsX] = useState(true);
+	const [isRegistering, setIsRegistering] = useState(false);
 
 	const fetchMemberAccountDataIfAny = useCallback(async () => {
 		if (!wallet?.adapter.publicKey) return;
@@ -45,52 +46,16 @@ const WalletConnection: React.FC<WalletConnectionProps> = ({ onComplete }) => {
 			return toast.error("Wallet does not support signing");
 		}
 
+		setIsRegistering(true);
 		try {
-			// const fairScoreResult = await fetchFairScore(
-			// 	wallet.adapter.publicKey.toBase58(),
-			// 	username,
-			// );
+			const fairScoreResult = await fetchFairScore(
+				wallet.adapter.publicKey.toBase58(),
+				username,
+			);
 
-			// if (!fairScoreResult) {
-			// 	return toast.error("Could not retrieve fair score");
-			// }
-
-			const fairScoreResult = {
-				wallet: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
-				fairscore_base: 58.1,
-				social_score: 36,
-				fairscore: 65.3,
-				badges: [
-					{
-						id: "diamond_hands",
-						label: "Diamond Hands",
-						description: "Long-term holder with conviction",
-						tier: "platinum",
-					},
-				],
-				actions: [{}],
-				tier: "gold",
-				timestamp: "2026-01-21T13:13:53.608725Z",
-				features: {
-					lst_percentile_score: 0,
-					major_percentile_score: 0,
-					native_sol_percentile: 0,
-					stable_percentile_score: 0,
-					tx_count: 0,
-					active_days: 0,
-					median_gap_hours: 0,
-					tempo_cv: 0,
-					burst_ratio: 0,
-					net_sol_flow_30d: 0,
-					median_hold_days: 0,
-					no_instant_dumps: 0,
-					conviction_ratio: 0,
-					platform_diversity: 0,
-					wallet_age_days: 0,
-				},
-			};
-
-			console.log(fairScoreResult);
+			if (!fairScoreResult) {
+				return toast.error("Could not retrieve fair score");
+			}
 
 			const tx = await registerMember(
 				fairScoreResult.fairscore,
@@ -98,6 +63,7 @@ const WalletConnection: React.FC<WalletConnectionProps> = ({ onComplete }) => {
 				fairScoreResult.fairscore_base,
 				fairScoreResult.tier,
 				username,
+				xUsername,
 				wallet.adapter.publicKey,
 			);
 
@@ -115,11 +81,13 @@ const WalletConnection: React.FC<WalletConnectionProps> = ({ onComplete }) => {
 			return onComplete(
 				wallet.adapter.publicKey.toBase58(),
 				username,
-				useAsX ? username.trim() : xHandle.trim(),
+				useAsX ? username.trim() : xUsername.trim(),
 			);
 		} catch (error) {
 			console.error("Failed to register member:", error);
 			toast.error("Failed to register member");
+		} finally {
+			setIsRegistering(false);
 		}
 	};
 
@@ -192,9 +160,9 @@ const WalletConnection: React.FC<WalletConnectionProps> = ({ onComplete }) => {
 									</div>
 									<input
 										autoFocus
-										value={xHandle}
+										value={xUsername}
 										onChange={(e) =>
-											setXHandle(e.target.value)
+											setXUsername(e.target.value)
 										}
 										className="w-full bg-black border border-white text-white px-3 py-3 rounded-none font-serif focus:outline-none focus:ring-1 focus:ring-white"
 										placeholder="Enter your X handle"
@@ -206,10 +174,12 @@ const WalletConnection: React.FC<WalletConnectionProps> = ({ onComplete }) => {
 
 						<Button
 							type="submit"
-							disabled={!username.trim()}
-							className="cursor-pointer w-full mt-3 bg-white text-black font-serif px-4 py-5 rounded-none border border-white"
+							disabled={isRegistering}
+							className="cursor-pointer w-full mt-3 bg-white text-black font-serif px-4 py-5 rounded-none border border-white disabled:bg-white/10 disabled:text-white disabled:opacity-70 disabled:cursor-not-allowed"
 						>
-							Complete Sign Up
+							{isRegistering
+								? "Registering..."
+								: "Complete Registration"}
 						</Button>
 					</form>
 				)}

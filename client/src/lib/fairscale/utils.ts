@@ -32,3 +32,10 @@ export const fetchFairScore = async (
 		return null;
 	}
 };
+
+export const TIER_SCORES = { Bronze: 0, Silver: 250, Gold: 500, Platinum: 750 };
+
+export const getTierFromScore = (score: number) => {
+	const tiers = Object.keys(TIER_SCORES).reverse();
+	return tiers.find((tier) => score >= TIER_SCORES[tier]) || "Bronze";
+};

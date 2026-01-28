@@ -1,16 +1,9 @@
 import React from "react";
-
-interface Proposal {
-	id: string;
-	title: string;
-	description: string;
-	author: string;
-	scoreThreshold: number;
-	scoreLimit: number;
-}
+import type { fetchAllProposalAccounts } from "../lib/program/utils";
+import { getTierFromScore } from "../lib/fairscale/utils";
 
 interface ProposalCardProps {
-	proposal: Proposal;
+	proposal: Awaited<ReturnType<typeof fetchAllProposalAccounts>>[0];
 	userFairscore: number;
 	onClick: () => void;
 }
@@ -50,25 +43,19 @@ const ProposalCard: React.FC<ProposalCardProps> = ({
 					</div>
 
 					<div className="mt-3 md:mt-0 text-white">
-						<p className="font-serif text-sm">Score Threshold:</p>
+						<p className="font-serif text-sm">Tier Threshold:</p>
 						<p className="font-mono text-sm text-white">
-							{proposal.scoreThreshold}
+							{getTierFromScore(proposal.scoreThreshold)}
 						</p>
-						<p className="font-serif text-sm mt-2">Score Limit:</p>
+						<p className="font-serif text-sm mt-2">Tier Limit:</p>
 						<p className="font-mono text-sm text-white">
-							{proposal.scoreLimit}
+							{getTierFromScore(proposal.scoreLimit)}
 						</p>
 					</div>
 				</div>
 
 				{canVote ? (
-					<button
-						className="w-full bg-white text-black font-serif text-lg py-3 border border-white rounded-none"
-						onClick={() => {
-							// mock vote action
-							alert(`Voted on "${proposal.title}"`);
-						}}
-					>
+					<button className="w-full bg-white text-black font-serif text-lg py-3 border border-white rounded-none hover:bg-black hover:text-white">
 						Vote
 					</button>
 				) : (

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
 	ArrowLeft,
 	User,
@@ -7,41 +7,99 @@ import {
 	XCircle,
 	Info,
 } from "lucide-react";
+import { toast } from "react-toastify";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { fetchAllProposalAccountsByUser } from "../lib/program/utils";
+import { voteProposal } from "../lib/program/instructions";
+import { fetchAllVoteAccountsByUser } from "../lib/program/utils";
+
+const getTimeRemaining = (endTimeSeconds: number) => {
+	const totalMs = endTimeSeconds * 1000 - Date.now();
+
+	if (totalMs <= 0) return "Expired";
+
+	const seconds = Math.floor((totalMs / 1000) % 60);
+	const minutes = Math.floor((totalMs / 1000 / 60) % 60);
+	const hours = Math.floor((totalMs / (1000 * 60 * 60)) % 24);
+	const days = Math.floor(totalMs / (1000 * 60 * 60 * 24));
+
+	if (days > 0) return `${days}d ${hours}h`;
+	if (hours > 0) return `${hours}h ${minutes}m`;
+	return `${minutes}m ${seconds}s`;
+};
 
 interface ProposalDetailsProps {
-	proposal: {
-		id: string;
-		title: string;
-		description: string;
-		author: string;
-		status: "Active" | "Passed" | "Failed";
-		endTime: string;
-		votesFor: number;
-		votesAgainst: number;
-		quorum: number;
-		scoreThreshold: number;
-		scoreLimit: number;
-	};
 	onBack: () => void;
 	userFairscore: number;
+	walletAddress: string;
+	proposal: Awaited<ReturnType<typeof fetchAllProposalAccountsByUser>>[0];
 }
 
 const ProposalDetails: React.FC<ProposalDetailsProps> = ({
-	proposal,
 	onBack,
 	userFairscore,
+	walletAddress,
+	proposal,
 }) => {
-	const totalVotes = proposal.votesFor + proposal.votesAgainst;
-	const forPercentage =
-		totalVotes === 0 ? 0 : (proposal.votesFor / totalVotes) * 100;
+	const { connection } = useConnection();
+	const { wallet, signTransaction } = useWallet();
+
+	const [isVoting, setIsVoting] = useState<string | null>(null);
+	const [hasVoted, setHasVoted] = useState<
+		Awaited<ReturnType<typeof fetchAllVoteAccountsByUser>>[0] | null
+	>(null);
+
+	const loadHasUserVoted = useCallback(async () => {
+		if (!walletAddress) return;
+		const votes = await fetchAllVoteAccountsByUser(walletAddress);
+		const vote = votes.find((v) => v.proposal === proposal.publicKey);
+		if (!!vote) setHasVoted(vote);
+	}, [walletAddress]);
+
+	useEffect(() => {
+		loadHasUserVoted();
+	}, [loadHasUserVoted]);
 
 	const isTooLow = userFairscore < proposal.scoreThreshold;
 	const isTooHigh = userFairscore > proposal.scoreLimit;
 	const canVote = !isTooLow && !isTooHigh;
+	const totalVotes = proposal.votesFor + proposal.votesAgainst;
+	const forPercentage =
+		totalVotes === 0 ? 0 : (proposal.votesFor / proposal.quorum) * 100;
+
+	const handleVoteProposal = async (vote: "approve" | "reject") => {
+		setIsVoting(vote);
+		try {
+			if (!wallet?.adapter.publicKey || !signTransaction) {
+				return toast.error("Wallet does not support signing");
+			}
+
+			const tx = await voteProposal(
+				vote,
+				proposal.publicKey,
+				wallet.adapter.publicKey,
+			);
+
+			const signedTx = await signTransaction(tx);
+			const signature = await connection.sendRawTransaction(
+				signedTx.serialize(),
+			);
+			const latestBlockhash = await connection.getLatestBlockhash();
+			await connection.confirmTransaction({
+				blockhash: latestBlockhash.blockhash,
+				lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+				signature: signature,
+			});
+		} catch (error) {
+			console.error("Error occured while voting: ", error);
+			toast.error("Error occured while voting");
+		} finally {
+			setIsVoting(null);
+		}
+	};
 
 	return (
 		<div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-			{/* Navigation & Status Header */}
 			<div className="flex items-center justify-between">
 				<button
 					onClick={onBack}
@@ -62,7 +120,6 @@ const ProposalDetails: React.FC<ProposalDetailsProps> = ({
 				</div>
 			</div>
 
-			{/* Title Block */}
 			<header className="border border-white bg-black p-8">
 				<h1 className="font-serif text-5xl font-bold text-white mb-6 leading-tight">
 					{proposal.title}
@@ -75,7 +132,8 @@ const ProposalDetails: React.FC<ProposalDetailsProps> = ({
 								Proposed by
 							</p>
 							<p className="font-mono text-white text-sm">
-								{proposal.author.slice(0, 12)}...
+								{proposal.author.slice(0, 12)}
+								...
 							</p>
 						</div>
 					</div>
@@ -85,9 +143,17 @@ const ProposalDetails: React.FC<ProposalDetailsProps> = ({
 							<p className="font-serif text-[10px] uppercase tracking-widest">
 								Ending In
 							</p>
-							<p className="font-mono text-white text-sm">
-								{proposal.endTime}
-							</p>
+							<div className="flex items-center gap-2">
+								<span
+									className={`font-mono text-sm ${
+										proposal.endTime * 1000 < Date.now()
+											? "text-red-500"
+											: "text-white"
+									}`}
+								>
+									{getTimeRemaining(proposal.endTime)}
+								</span>
+							</div>
 						</div>
 					</div>
 					<div className="flex items-center space-x-3 text-gray-400">
@@ -97,7 +163,7 @@ const ProposalDetails: React.FC<ProposalDetailsProps> = ({
 								Quorum
 							</p>
 							<p className="font-mono text-white text-sm">
-								{proposal.quorum} FS Required
+								{proposal.quorum} Votes Required
 							</p>
 						</div>
 					</div>
@@ -111,11 +177,10 @@ const ProposalDetails: React.FC<ProposalDetailsProps> = ({
 						Current Standing
 					</h3>
 					<p className="font-mono text-white text-sm">
-						{totalVotes} FS Total Weight
+						{totalVotes} Total Votes
 					</p>
 				</div>
 
-				{/* Custom Progress Bar */}
 				<div className="h-4 w-full bg-zinc-900 border border-white flex">
 					<div
 						className="h-full bg-white transition-all duration-1000"
@@ -129,7 +194,7 @@ const ProposalDetails: React.FC<ProposalDetailsProps> = ({
 							Support
 						</p>
 						<p className="font-mono text-3xl font-bold text-white">
-							{proposal.votesFor} FS
+							{proposal.votesFor} Votes
 						</p>
 					</div>
 					<div className="border border-white p-4">
@@ -137,13 +202,12 @@ const ProposalDetails: React.FC<ProposalDetailsProps> = ({
 							Oppose
 						</p>
 						<p className="font-mono text-3xl font-bold text-white">
-							{proposal.votesAgainst} FS
+							{proposal.votesAgainst} Votes
 						</p>
 					</div>
 				</div>
 			</section>
 
-			{/* Main Content & Description */}
 			<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 				<div className="lg:col-span-2 border border-white bg-black p-8">
 					<h3 className="font-serif text-2xl font-bold text-white mb-6 border-b border-white pb-2 inline-block">
@@ -154,7 +218,6 @@ const ProposalDetails: React.FC<ProposalDetailsProps> = ({
 					</div>
 				</div>
 
-				{/* Vote Action Box */}
 				<aside className="border border-white bg-white p-8 h-fit relative overflow-hidden">
 					<h3 className="font-serif text-2xl font-bold text-black mb-2 uppercase tracking-tighter">
 						Cast Your Vote
@@ -169,18 +232,65 @@ const ProposalDetails: React.FC<ProposalDetailsProps> = ({
 						</p>
 					</div>
 
-					{canVote ? (
+					{hasVoted ? (
+						<div className="space-y-4 animate-in fade-in duration-700">
+							<div
+								className={`border-2 p-4 ${
+									hasVoted.vote === "approve"
+										? "border-green-600 bg-green-50"
+										: "border-red-600 bg-red-50"
+								}`}
+							>
+								<p className="font-serif text-[10px] uppercase tracking-widest text-black/60 mb-1">
+									Your Vote
+								</p>
+								<div className="flex items-center justify-between text-black">
+									<span className="font-serif font-bold text-xl uppercase">
+										{hasVoted.vote === "approve"
+											? "Approved"
+											: "Rejected"}
+									</span>
+									{hasVoted.vote === "approve" ? (
+										<CheckCircle2 size={24} />
+									) : (
+										<XCircle size={24} />
+									)}
+								</div>
+								<p className="font-mono text-xs text-black/70 mt-2">
+									Weight Applied: {hasVoted.weight} FS
+								</p>
+							</div>
+						</div>
+					) : canVote ? (
 						/* QUALIFIED STATE */
 						<div className="space-y-4">
 							<p className="font-serif text-black text-sm mb-4">
 								You are eligible to vote on this proposal. Your
 								weight of {userFairscore} will be applied.
 							</p>
-							<button className="w-full flex items-center justify-center gap-2 bg-black text-white font-serif py-4 border border-black hover:bg-zinc-800 transition-colors uppercase tracking-widest">
-								<CheckCircle2 size={18} /> Support
+							<button
+								disabled={!!isVoting}
+								className="cursor-pointer w-full flex items-center justify-center gap-2 bg-black text-white font-serif py-4 border border-black hover:bg-zinc-800 transition-colors uppercase tracking-widest disabled:bg-zinc-800 disabled:cursor-not-allowed"
+								onClick={() => {
+									handleVoteProposal("approve");
+								}}
+							>
+								<CheckCircle2 size={18} />{" "}
+								{isVoting == "approve"
+									? "Approving..."
+									: "Approve"}
 							</button>
-							<button className="w-full flex items-center justify-center gap-2 bg-transparent text-black font-serif py-4 border border-black hover:bg-black hover:text-white transition-colors uppercase tracking-widest">
-								<XCircle size={18} /> Oppose
+							<button
+								disabled={!!isVoting}
+								className="cursor-pointer w-full flex items-center justify-center gap-2 bg-transparent text-black font-serif py-4 border border-black hover:bg-black hover:text-white transition-colors uppercase tracking-widest disabled:bg-zinc-800 disabled:text-white disabled:cursor-not-allowed"
+								onClick={() => {
+									handleVoteProposal("reject");
+								}}
+							>
+								<XCircle size={18} />{" "}
+								{isVoting == "reject"
+									? "Rejecting..."
+									: "Reject"}
 							</button>
 						</div>
 					) : (
@@ -196,12 +306,6 @@ const ProposalDetails: React.FC<ProposalDetailsProps> = ({
 										: `Your Fairscore is too high. This proposal is restricted to members below ${proposal.scoreLimit} FS.`}
 								</p>
 							</div>
-							<button
-								disabled
-								className="w-full bg-black/10 text-black/40 font-serif py-4 border border-black/20 cursor-not-allowed uppercase tracking-widest"
-							>
-								Locked
-							</button>
 						</div>
 					)}
 				</aside>

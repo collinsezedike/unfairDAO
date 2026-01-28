@@ -11,6 +11,7 @@ export default function Home() {
 	const [isConnected, setIsConnected] = useState(false);
 	const [walletAddress, setWalletAddress] = useState("");
 	const [username, setUsername] = useState("");
+	const [xUsername, setXUsername] = useState("");
 	const [activeView, setActiveView] = useState("proposals");
 	const [memberAccountData, setMemberAccountData] =
 		useState<Awaited<ReturnType<typeof fetchMemberAccount>>>(null);
@@ -29,10 +30,11 @@ export default function Home() {
 	const handlePostWalletConnect = async (
 		address: string,
 		username: string,
-		xHandle: string,
+		xUsername: string,
 	) => {
 		setWalletAddress(address);
 		setUsername(username);
+		setXUsername(xUsername);
 		setIsConnected(true);
 	};
 
@@ -83,10 +85,18 @@ export default function Home() {
 			{/* Right pane */}
 			<aside className="w-80 bg-black border-l border-white p-8">
 				<div className="border border-white bg-black p-6">
-					<h3 className="font-serif text-2xl font-bold text-white mb-4">
-						@{username || "—"}
+					<h3 className="font-serif text-2xl font-bold text-white mb-4 capitalize">
+						{username || "—"}
 					</h3>
 					<div className="space-y-4">
+						<div>
+							<p className="font-serif text-white text-sm">
+								X (Twitter)
+							</p>
+							<p className="font-mono text-xl font-bold text-white">
+								@{xUsername}
+							</p>
+						</div>
 						<div>
 							<p className="font-serif text-white text-sm">
 								Wallet
