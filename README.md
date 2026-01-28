@@ -71,3 +71,5 @@ pub struct Member {
 3. **Execution:** If a proposal meets its **Quorum** and passing requirements, the DAO Treasury or Program executes the instruction permissionlessly.
 
 ## Demo Video
+
+[![UnfairDAO Demo Video](https://i.ytimg.com/vi/Mi1znkhlqf8/maxresdefault.jpg)](https://youtu.be/Mi1znkhlqf8)
